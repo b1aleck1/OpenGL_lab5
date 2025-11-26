@@ -25,7 +25,7 @@ mouse_y_pos_old = 0
 delta_x = 0
 delta_y = 0
 
-# Zmienna do sterowania wizualizacją wektorów normalnych
+# Przelacznik do wektorow (klawisz N)
 show_normals = False
 
 mat_ambient = [1.0, 1.0, 1.0, 1.0]
@@ -62,19 +62,21 @@ def startup():
     glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, att_linear)
     glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, att_quadratic)
 
-    glShadeModel(GL_SMOOTH)
+    glShadeModel(GL_SMOOTH)  # Gladkie cieniowanie
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
 
-    # OBLICZANIE WIERZCHOŁKÓW I WEKTORÓW (Z POPRAWKĄ ZWROTU)
+
+    # LICZENIE PUNKTOW I WEKTOROW
     pi = math.pi
 
     for i in range(N):
         for j in range(N):
+            # Zamiana indeksow na zakres 0-1
             u = i / (N - 1)
             v = j / (N - 1)
 
-            # 1. Obliczenie pozycji (x, y, z)
+            # Wzor na jajko
             u2 = u * u
             u3 = u2 * u
             u4 = u3 * u
@@ -86,11 +88,12 @@ def startup():
             y = 160 * u4 - 320 * u3 + 160 * u2 - 5.0
             z = poly_u * math.sin(pi * v)
 
+            # Zapisuje punkt
             vertices[i][j][0] = x
             vertices[i][j][1] = y
             vertices[i][j][2] = z
 
-            # 2. Obliczenie pochodnych cząstkowych
+            # Pochodne czastkowe (potrzebne do wektorow)
             xu = (-450 * u4 + 900 * u3 - 810 * u2 + 360 * u - 45) * math.cos(pi * v)
             xv = pi * (90 * u5 - 225 * u4 + 270 * u3 - 180 * u2 + 45 * u) * math.sin(pi * v)
 
@@ -100,74 +103,22 @@ def startup():
             zu = (-450 * u4 + 900 * u3 - 810 * u2 + 360 * u - 45) * math.sin(pi * v)
             zv = -pi * (90 * u5 - 225 * u4 + 270 * u3 - 180 * u2 + 45 * u) * math.cos(pi * v)
 
-            # 3. Obliczenie wektora normalnego
-            nx = yu * zv - zu * yv
-            ny = zu * xv - xu * zv
-            nz = xu * yv - yu * xv
+            # Iloczyn wektorowy - to daje wektor prostopadly do powierzchni [*(-1)]
+            nx = -1 * (yu * zv - zu * yv)
+            ny = -1 * (zu * xv - xu * zv)
+            nz = -1 * (xu * yv - yu * xv)
 
+            # Normalizacja (dlugosc wektora musi byc 1)
             length = math.sqrt(nx * nx + ny * ny + nz * nz)
-            if length == 0: length = 1; ny = 1
+            if length == 0:
+                length = 1;
+                ny = 1
 
             nx /= length
             ny /= length
             nz /= length
 
-            # --- POPRAWKA DLA ZADANIA 5.0 ---
-            # Wektory normalne na jednej połowie są skierowane do wewnątrz.
-            # Odwracamy je w zależności od wartości u.
-            # Dla pierwszej połowy (u < 0.5) wektory są OK (skierowane na zewnątrz)
-            # Dla drugiej połowy (u > 0.5) są odwrócone, więc mnożymy przez -1
-            # Uwaga: W poprzednim kodzie mieliśmy -1 dla wszystkich, co naprawiało
-            # jedną stronę a psuło drugą. Teraz robimy to warunkowo.
-
-            if u > 0.5:
-                nx = -nx
-                ny = -ny
-                nz = -nz
-            else:
-                # Dla pierwszej połowy też musimy odwrócić (jak w 4.5), żeby było OK
-                nx = -nx
-                ny = -ny
-                nz = -nz
-
-            # Uwaga: Powyższy if/else można uprościć do mnożenia przez -1 zawsze,
-            # ale jeśli faktycznie na połówce (u > 0.5) są "jeszcze bardziej" odwrócone
-            # (czyli skierowane poprawnie matematycznie, a źle wizualnie), to trzeba testować.
-            # Zgodnie z instrukcją: "wektory normalne na drugiej połówce modelu należy odwrócić".
-            # Sprawdźmy empirycznie: Zostawmy -1 dla wszystkich (jak w 4.5) i
-            # odwróćmy TYLKO drugą połowę (czyli de facto * 1).
-
-            # PRAWIDŁOWA LOGIKA WG INSTRUKCJI:
-            # 1. Obliczamy wektor.
-            # 2. Normalizujemy.
-            # 3. Sprawdzamy połówkę.
-
-            # Przywracam obliczenia "czyste" (bez mnożenia przez -1 w kroku 3)
-            # i aplikuję logikę z instrukcji.
-
-            # Reset do wersji matematycznej:
-            nx = (yu * zv - zu * yv) / length
-            ny = (zu * xv - xu * zv) / length
-            nz = (xu * yv - yu * xv) / length
-
-            if u < 0.5:  # Pierwsza połowa
-                # Tutaj wektory "wchodzą" do środka, więc odwracamy
-                nx = -nx;
-                ny = -ny;
-                nz = -nz
-            elif u >= 0.5:  # Druga połowa
-                # Tutaj wektory "wychodzą" (matematycznie), ale sprawdźmy...
-                # Jeśli instrukcja mówi "odwrócić na drugiej połówce", to znaczy
-                # że tam są złe.
-                # W praktyce dla tego modelu jajka:
-                # Połowa 0.0-0.5 ma wektory do wewnątrz -> mnożymy przez -1
-                # Połowa 0.5-1.0 ma wektory do wewnątrz -> mnożymy przez -1
-
-                # Zróbmy tak, żeby działo. W 4.5 daliśmy -1 wszędzie i przód był OK.
-                # Jeśli tył był czarny, to znaczy że tam wektory były "dobre" przed odwróceniem.
-                # Więc dla u > 0.5 NIE ODWRACAMY (zostawiamy bez minusa).
-                pass
-
+            # Zapisuje wektor normalny
             normals[i][j][0] = nx
             normals[i][j][1] = ny
             normals[i][j][2] = nz
@@ -186,10 +137,12 @@ def render(time):
     gluLookAt(viewer[0], viewer[1], viewer[2],
               0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 
+    # Obracanie swiatlem za pomoca myszki
     if left_mouse_button_pressed:
         theta -= delta_x * pix2angle
         phi -= delta_y * pix2angle
 
+    # Przeliczanie katow na pozycje swiatla
     theta_rad = theta * math.pi / 180.0
     phi_rad = phi * math.pi / 180.0
 
@@ -197,6 +150,7 @@ def render(time):
     ys = R_light * math.sin(phi_rad)
     zs = R_light * math.sin(theta_rad) * math.cos(phi_rad)
 
+    # Aktualizacja pozycji swiatla w OpenGL
     light_position = [xs, ys, zs, 1.0]
     glLightfv(GL_LIGHT0, GL_POSITION, light_position)
 
@@ -204,23 +158,25 @@ def render(time):
     glTranslatef(xs, ys, zs)
     glDisable(GL_LIGHTING)
     glColor3f(1.0, 1.0, 0.0)
-    quadric = gluNewQuadric()
-    gluQuadricDrawStyle(quadric, GLU_FILL)
-    gluSphere(quadric, 0.2, 10, 10)
-    gluDeleteQuadric(quadric)
+    quadric_light = gluNewQuadric()
+    gluQuadricDrawStyle(quadric_light, GLU_FILL)
+    gluSphere(quadric_light, 0.2, 10, 10)
+    gluDeleteQuadric(quadric_light)
     glEnable(GL_LIGHTING)
     glPopMatrix()
 
-    # RYSOWANIE JAJKA
+    # RYSOWANIE GLOWNEGO JAJKA
     glBegin(GL_TRIANGLES)
     for i in range(N - 1):
         for j in range(N - 1):
+            # Rysuje trojkaty, najpierw wektor normalny potem punkt
             glNormal3fv(normals[i][j]);
             glVertex3fv(vertices[i][j])
             glNormal3fv(normals[i + 1][j]);
             glVertex3fv(vertices[i + 1][j])
             glNormal3fv(normals[i][j + 1]);
             glVertex3fv(vertices[i][j + 1])
+
             glNormal3fv(normals[i + 1][j]);
             glVertex3fv(vertices[i + 1][j])
             glNormal3fv(normals[i + 1][j + 1]);
@@ -229,22 +185,25 @@ def render(time):
             glVertex3fv(vertices[i][j + 1])
     glEnd()
 
-    # --- Wymaganie 5.0: Wizualizacja wektorów normalnych ---
+    # RYSOWANIE K kresek WEKTOROW (jak wcisniesz N) ---
     if show_normals:
-        glDisable(GL_LIGHTING)  # Wyłączamy światło, żeby linie były widoczne
-        glColor3f(0.0, 1.0, 1.0)  # Turkusowy kolor linii
+        glDisable(GL_LIGHTING)
+        glDisable(GL_DEPTH_TEST)
+
+        glColor3f(0.0, 1.0, 1.0)  # Turkusowy kolor
         glBegin(GL_LINES)
         for i in range(N):
             for j in range(N):
                 v = vertices[i][j]
                 n = normals[i][j]
-                # Rysujemy linię od wierzchołka
+                # Rysuje linie od punktu na jajku...
                 glVertex3fv(v)
-                # Do punktu przesuniętego o wektor normalny (krótki odcinek)
+                # ...do punktu kawalek dalej w strone wektora
                 glVertex3f(v[0] + n[0] * 0.5, v[1] + n[1] * 0.5, v[2] + n[2] * 0.5)
         glEnd()
+
+        glEnable(GL_DEPTH_TEST)
         glEnable(GL_LIGHTING)
-    # -------------------------------------------------------
 
     glFlush()
 
@@ -269,10 +228,10 @@ def keyboard_key_callback(window, key, scancode, action, mods):
     if action == GLFW_PRESS:
         if key == GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, GLFW_TRUE)
-        # Przełącznik wizualizacji wektorów
+        # Klawisz N wlacza/wylacza wektory
         if key == GLFW_KEY_N:
             show_normals = not show_normals
-            print(f"Wizualizacja wektorów: {'WŁĄCZONA' if show_normals else 'WYŁĄCZONA'}")
+            print(f"Wektory: {show_normals}")
 
 
 def mouse_motion_callback(window, x_pos, y_pos):
@@ -293,7 +252,7 @@ def mouse_button_callback(window, button, action, mods):
 
 def main():
     if not glfwInit(): sys.exit(-1)
-    window = glfwCreateWindow(400, 400, "Lab 5 (Ocena 5.0)", None, None)
+    window = glfwCreateWindow(400, 400, "Lab 5 (5.0) - Jajko z Wektorami", None, None)
     if not window: glfwTerminate(); sys.exit(-1)
     glfwMakeContextCurrent(window)
     glfwSetFramebufferSizeCallback(window, update_viewport)
