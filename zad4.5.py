@@ -67,9 +67,7 @@ def startup():
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
 
-    # =============================================================
     # OBLICZANIE WIERZCHOŁKÓW I WEKTORÓW NORMALNYCH JAJKA
-    # =============================================================
     pi = math.pi
 
     for i in range(N):
@@ -77,7 +75,7 @@ def startup():
             u = i / (N - 1)
             v = j / (N - 1)
 
-            # 1. Obliczenie pozycji (x, y, z)
+            # Obliczenie pozycji (x, y, z)
             u2 = u * u
             u3 = u2 * u
             u4 = u3 * u
@@ -93,7 +91,7 @@ def startup():
             vertices[i][j][1] = y
             vertices[i][j][2] = z
 
-            # 2. Obliczenie pochodnych cząstkowych
+            # Obliczenie pochodnych cząstkowych
             xu = (-450 * u4 + 900 * u3 - 810 * u2 + 360 * u - 45) * math.cos(pi * v)
             xv = pi * (90 * u5 - 225 * u4 + 270 * u3 - 180 * u2 + 45 * u) * math.sin(pi * v)
 
@@ -103,13 +101,13 @@ def startup():
             zu = (-450 * u4 + 900 * u3 - 810 * u2 + 360 * u - 45) * math.sin(pi * v)
             zv = -pi * (90 * u5 - 225 * u4 + 270 * u3 - 180 * u2 + 45 * u) * math.cos(pi * v)
 
-            # 3. Obliczenie wektora normalnego (iloczyn wektorowy)
-            # POPRAWKA: Odwrócenie zwrotu wektorów (-1 * ...), aby celowały na zewnątrz
+            # Obliczenie wektora normalnego (iloczyn wektorowy)
+            # Odwrócenie zwrotu wektorów, aby celowały na zewnątrz
             nx = -1 * (yu * zv - zu * yv)
             ny = -1 * (zu * xv - xu * zv)
             nz = -1 * (xu * yv - yu * xv)
 
-            # 4. Normalizacja wektora
+            # Normalizacja wektora
             length = math.sqrt(nx * nx + ny * ny + nz * nz)
 
             if length == 0:
