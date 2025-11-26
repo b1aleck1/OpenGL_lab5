@@ -11,7 +11,7 @@ viewer = [0.0, 0.0, 10.0]
 
 theta = 0.0
 phi = 0.0
-R_light = 5.0  # Promień orbity światła
+R_light = 5.0
 pix2angle = 1.0
 
 left_mouse_button_pressed = 0
@@ -28,7 +28,6 @@ mat_shininess = 20.0
 light_ambient = [0.1, 0.1, 0.0, 1.0]
 light_diffuse = [0.8, 0.8, 0.0, 1.0]
 light_specular = [1.0, 1.0, 1.0, 1.0]
-# Pozycja początkowa (będzie nadpisywana w render)
 light_position = [0.0, 0.0, 10.0, 1.0]
 
 att_constant = 1.0
@@ -74,41 +73,34 @@ def render(time):
               0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 
     if left_mouse_button_pressed:
-        theta += delta_x * pix2angle
-        phi += delta_y * pix2angle
+        # POPRAWKA STEROWANIA (zgodnie z zadaniem 4.5)
+        theta -= delta_x * pix2angle
+        phi -= delta_y * pix2angle
 
-    # Obliczenie pozycji źródła światła (współrzędne sferyczne)
-    # Zamiana stopni na radiany
+    # Obliczenie pozycji źródła światła
     theta_rad = theta * math.pi / 180.0
     phi_rad = phi * math.pi / 180.0
 
-    # Wzory z instrukcji (R, theta, phi)
     xs = R_light * math.cos(theta_rad) * math.cos(phi_rad)
     ys = R_light * math.sin(phi_rad)
     zs = R_light * math.sin(theta_rad) * math.cos(phi_rad)
 
-    # Ustawienie nowej pozycji światła 0
     light_position = [xs, ys, zs, 1.0]
     glLightfv(GL_LIGHT0, GL_POSITION, light_position)
 
-    # Wizualizacja źródła światła (mała sfera w miejscu światła)
-    glPushMatrix()  # Zapamiętaj macierz (żeby przesunięcie nie wpłynęło na dużą sferę)
-    glTranslatef(xs, ys, zs)  # Przesuń do pozycji światła
-
-    # Wyłączamy oświetlenie dla wizualizacji samego źródła (żeby było zawsze widoczne)
+    # Wizualizacja źródła światła
+    glPushMatrix()
+    glTranslatef(xs, ys, zs)
     glDisable(GL_LIGHTING)
-    glColor3f(1.0, 1.0, 0.0)  # Żółty kolor wizualizacji
-
+    glColor3f(1.0, 1.0, 0.0)
     quadric_light = gluNewQuadric()
     gluQuadricDrawStyle(quadric_light, GLU_FILL)
     gluSphere(quadric_light, 0.5, 30, 30)
     gluDeleteQuadric(quadric_light)
-
-    glEnable(GL_LIGHTING)  # Włączamy z powrotem oświetlenie
-    glPopMatrix()  # Przywróć macierz
+    glEnable(GL_LIGHTING)
+    glPopMatrix()
 
     # Rysowanie głównego obiektu
-    # Obiekt stoi w miejscu (0,0,0), to światło się rusza
     quadric = gluNewQuadric()
     gluQuadricDrawStyle(quadric, GLU_FILL)
     gluSphere(quadric, 3.0, 10, 10)
