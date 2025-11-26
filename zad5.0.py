@@ -185,7 +185,7 @@ def render(time):
             glVertex3fv(vertices[i][j + 1])
     glEnd()
 
-    # RYSOWANIE K kresek WEKTOROW (jak wcisniesz N) ---
+    # RYSOWANIE K kresek WEKTOROW
     if show_normals:
         glDisable(GL_LIGHTING)
         glDisable(GL_DEPTH_TEST)
