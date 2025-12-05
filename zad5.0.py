@@ -25,7 +25,7 @@ mouse_y_pos_old = 0
 delta_x = 0
 delta_y = 0
 
-# Przelacznik do wektorow (klawisz N)
+# Przelacznik wektorow
 show_normals = False
 
 mat_ambient = [1.0, 1.0, 1.0, 1.0]
@@ -62,63 +62,70 @@ def startup():
     glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, att_linear)
     glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, att_quadratic)
 
-    glShadeModel(GL_SMOOTH)  # Gladkie cieniowanie
+    glShadeModel(GL_SMOOTH)
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
 
+    # Wazne przy skalowaniu/obrotach, zeby swiatlo nie "glupialo"
+    glEnable(GL_NORMALIZE)
 
-    # LICZENIE PUNKTOW I WEKTOROW
     pi = math.pi
 
     for i in range(N):
         for j in range(N):
-            # Zamiana indeksow na zakres 0-1
             u = i / (N - 1)
             v = j / (N - 1)
 
-            # Wzor na jajko
-            u2 = u * u
-            u3 = u2 * u
-            u4 = u3 * u
+            # 1. Pozycja (x, y, z)
+            u2 = u * u;
+            u3 = u2 * u;
+            u4 = u3 * u;
             u5 = u4 * u
-
             poly_u = (-90 * u5 + 225 * u4 - 270 * u3 + 180 * u2 - 45 * u)
 
             x = poly_u * math.cos(pi * v)
             y = 160 * u4 - 320 * u3 + 160 * u2 - 5.0
             z = poly_u * math.sin(pi * v)
 
-            # Zapisuje punkt
             vertices[i][j][0] = x
             vertices[i][j][1] = y
             vertices[i][j][2] = z
 
-            # Pochodne czastkowe (potrzebne do wektorow)
+            # 2. Pochodne
             xu = (-450 * u4 + 900 * u3 - 810 * u2 + 360 * u - 45) * math.cos(pi * v)
             xv = pi * (90 * u5 - 225 * u4 + 270 * u3 - 180 * u2 + 45 * u) * math.sin(pi * v)
-
             yu = 640 * u3 - 960 * u2 + 320 * u
             yv = 0
-
             zu = (-450 * u4 + 900 * u3 - 810 * u2 + 360 * u - 45) * math.sin(pi * v)
             zv = -pi * (90 * u5 - 225 * u4 + 270 * u3 - 180 * u2 + 45 * u) * math.cos(pi * v)
 
-            # Iloczyn wektorowy - to daje wektor prostopadly do powierzchni [*(-1)]
-            nx = -1 * (yu * zv - zu * yv)
-            ny = -1 * (zu * xv - xu * zv)
-            nz = -1 * (xu * yv - yu * xv)
+            # 3. Iloczyn wektorowy
+            nx = yu * zv - zu * yv
+            ny = zu * xv - xu * zv
+            nz = xu * yv - yu * xv
 
-            # Normalizacja (dlugosc wektora musi byc 1)
+            # 4. Normalizacja i poprawki
             length = math.sqrt(nx * nx + ny * ny + nz * nz)
-            if length == 0:
-                length = 1;
-                ny = 1
 
-            nx /= length
-            ny /= length
-            nz /= length
+            # NAPRAWA BIEGUNOW (zeby nie bylo plam)
+            if i == 0:
+                nx, ny, nz = 0.0, -1.0, 0.0
+            elif i == N - 1:
+                nx, ny, nz = 0.0, 1.0, 0.0
+            elif length > 0:
+                nx /= length
+                ny /= length
+                nz /= length
 
-            # Zapisuje wektor normalny
+                # --- AUTOMATYCZNE ODWRACANIE WEKTOROW ---
+                # Sprawdzamy iloczyn skalarny pozycji i wektora normalnego.
+                # Jesli jest < 0, to wektor "patrzy" do srodka jajka, wtedy go odwracamy.
+
+                if (x * nx + y * ny + z * nz) < 0:
+                    nx = -nx
+                    ny = -ny
+                    nz = -nz
+
             normals[i][j][0] = nx
             normals[i][j][1] = ny
             normals[i][j][2] = nz
@@ -126,6 +133,13 @@ def startup():
 
 def shutdown():
     pass
+
+
+def spin(angle):
+    # Losowy obrot (wszystkie osie)
+    glRotatef(angle, 1.0, 0.0, 0.0)
+    glRotatef(angle, 0.0, 1.0, 0.0)
+    glRotatef(angle, 0.0, 0.0, 1.0)
 
 
 def render(time):
@@ -137,23 +151,22 @@ def render(time):
     gluLookAt(viewer[0], viewer[1], viewer[2],
               0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 
-    # Obracanie swiatlem za pomoca myszki
     if left_mouse_button_pressed:
         theta -= delta_x * pix2angle
         phi -= delta_y * pix2angle
 
-    # Przeliczanie katow na pozycje swiatla
     theta_rad = theta * math.pi / 180.0
     phi_rad = phi * math.pi / 180.0
 
+    # Pozycja swiatla
     xs = R_light * math.cos(theta_rad) * math.cos(phi_rad)
     ys = R_light * math.sin(phi_rad)
     zs = R_light * math.sin(theta_rad) * math.cos(phi_rad)
 
-    # Aktualizacja pozycji swiatla w OpenGL
     light_position = [xs, ys, zs, 1.0]
     glLightfv(GL_LIGHT0, GL_POSITION, light_position)
 
+    # Rysowanie ruchomego zrodla swiatla
     glPushMatrix()
     glTranslatef(xs, ys, zs)
     glDisable(GL_LIGHTING)
@@ -165,11 +178,13 @@ def render(time):
     glEnable(GL_LIGHTING)
     glPopMatrix()
 
-    # RYSOWANIE GLOWNEGO JAJKA
+    # Obrot calego jajka
+    spin(time * 20.0)
+
+    # Rysowanie jajka
     glBegin(GL_TRIANGLES)
     for i in range(N - 1):
         for j in range(N - 1):
-            # Rysuje trojkaty, najpierw wektor normalny potem punkt
             glNormal3fv(normals[i][j]);
             glVertex3fv(vertices[i][j])
             glNormal3fv(normals[i + 1][j]);
@@ -185,21 +200,21 @@ def render(time):
             glVertex3fv(vertices[i][j + 1])
     glEnd()
 
-    # RYSOWANIE K kresek WEKTOROW
+    # Rysowanie WSZYSTKICH wektorow (klawisz N)
     if show_normals:
         glDisable(GL_LIGHTING)
-        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_DEPTH_TEST)  # Zeby nie migalo
 
-        glColor3f(0.0, 1.0, 1.0)  # Turkusowy kolor
+        glColor3f(0.0, 1.0, 1.0)
         glBegin(GL_LINES)
+
         for i in range(N):
             for j in range(N):
                 v = vertices[i][j]
                 n = normals[i][j]
-                # Rysuje linie od punktu na jajku...
                 glVertex3fv(v)
-                # ...do punktu kawalek dalej w strone wektora
                 glVertex3f(v[0] + n[0] * 0.5, v[1] + n[1] * 0.5, v[2] + n[2] * 0.5)
+
         glEnd()
 
         glEnable(GL_DEPTH_TEST)
@@ -224,11 +239,9 @@ def update_viewport(window, width, height):
 
 def keyboard_key_callback(window, key, scancode, action, mods):
     global show_normals
-
     if action == GLFW_PRESS:
         if key == GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, GLFW_TRUE)
-        # Klawisz N wlacza/wylacza wektory
         if key == GLFW_KEY_N:
             show_normals = not show_normals
             print(f"Wektory: {show_normals}")
@@ -252,7 +265,7 @@ def mouse_button_callback(window, button, action, mods):
 
 def main():
     if not glfwInit(): sys.exit(-1)
-    window = glfwCreateWindow(400, 400, "Lab 5 (5.0) - Jajko z Wektorami", None, None)
+    window = glfwCreateWindow(400, 400, "Lab 5 (5.0) - Jajko Final 100%", None, None)
     if not window: glfwTerminate(); sys.exit(-1)
     glfwMakeContextCurrent(window)
     glfwSetFramebufferSizeCallback(window, update_viewport)

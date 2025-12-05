@@ -15,7 +15,6 @@ normals = [[[0.0] * 3 for i in range(N)] for j in range(N)]
 
 viewer = [0.0, 0.0, 10.0]
 
-# Zmienne do sterowania światłem
 theta = 0.0
 phi = 0.0
 R_light = 6.0

@@ -137,7 +137,6 @@ def print_selection():
     print(f"Wybrany parametr: {param_names[selection_index]} | Wartość: {val:.1f}")
 
 
-# OBSŁUGA KLAWIATURY
 def keyboard_key_callback(window, key, scancode, action, mods):
     global selection_index
     global light_ambient, light_diffuse, light_specular

@@ -73,7 +73,6 @@ def render(time):
               0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 
     if left_mouse_button_pressed:
-        # POPRAWKA STEROWANIA (zgodnie z zadaniem 4.5)
         theta -= delta_x * pix2angle
         phi -= delta_y * pix2angle
 
